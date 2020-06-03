@@ -76,6 +76,15 @@ void setup()
  #endif
 }
 
+bool IsSerialConnected()
+{
+  //  if data has buffered up, serial may be disconnected
+  if ( Serial.availableForWrite() < 32 )
+    return false;
+
+  return true;
+}
+
 bool ProcessButton(int ButtonIndex)
 {
 	int ButtonPin = ButtonPins[ButtonIndex];
@@ -93,10 +102,12 @@ bool ProcessButton(int ButtonIndex)
 
 	if ( NewPressed )
 	{
-		Serial.print("Button ");
-		Serial.print(ButtonIndex);
-		Serial.println(" Down...");
-	
+    if ( IsSerialConnected() )
+    {
+  		Serial.print("Button ");
+	  	Serial.print(ButtonIndex);
+		  Serial.println(" Down...");
+    }
 #if defined(MIDI_MODE)
     noteOn(Channel,Note,Velocity);    
 #else
@@ -105,9 +116,12 @@ bool ProcessButton(int ButtonIndex)
 	}
  else
  {
-  Serial.print("Button ");
-    Serial.print(ButtonIndex);
-    Serial.println(" up...");
+    if ( IsSerialConnected() )
+    {
+      Serial.print("Button ");
+      Serial.print(ButtonIndex);
+      Serial.println(" up...");
+    }
  //  button released
 #if defined(MIDI_MODE)
     noteOff(Channel,Note,Velocity);    
