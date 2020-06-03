@@ -1,4 +1,10 @@
+#define MIDI_MODE
+
+#if defined(MIDI_MODE)
+#include "MIDIUSB.h"
+#else
 #include "Keyboard.h"
+#endif
 
 const int ButtonCount = 4;
 
@@ -11,9 +17,39 @@ const int ButtonCount = 4;
 	#error Unconfigured board
 #endif
 
+#if defined(MIDI_MODE)
+#define C4  60
+#define A3  57
+#define E3  52
+#define D3  50
+#define C3  48
+const char ButtonNotes[ButtonCount] = {C3,D3,E3,A3};
+const char ButtonVelocitys[ButtonCount] = {127,127,127,127};
+const char ButtonChannels[ButtonCount] = {0,0,0,0};
+#else
 const char ButtonKeys[ButtonCount] = {'1','2','3','4'};
+#endif
 bool ButtonPressed[ButtonCount] = { false,false,false,false };
 
+
+#if defined(MIDI_MODE)
+//  https://github.com/arduino-libraries/MIDIUSB/blob/master/examples/MIDIUSB_loop/MIDIUSB_loop.ino
+void noteOn(byte channel, byte pitch, byte velocity) 
+{
+  midiEventPacket_t noteOn = {0x09, 0x90 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOn);
+  MidiUSB.flush();
+}
+#endif
+
+#if defined(MIDI_MODE)
+void noteOff(byte channel, byte pitch, byte velocity) 
+{
+  midiEventPacket_t noteOff = {0x08, 0x80 | channel, pitch, velocity};
+  MidiUSB.sendMIDI(noteOff);
+  MidiUSB.flush();
+}
+#endif
 
 void setup() 
 {
@@ -33,7 +69,11 @@ void setup()
 	}
 
 	Serial.println("Starting keyboard...");
-	Keyboard.begin();
+
+ #if defined(MIDI_MODE)
+ #else
+  Keyboard.begin();
+ #endif
 }
 
 bool ProcessButton(int ButtonIndex)
@@ -45,14 +85,35 @@ bool ProcessButton(int ButtonIndex)
 	if ( NewPressed == WasPressed )
 		return false;
 
+#if defined(MIDI_MODE)
+  int Channel = ButtonChannels[ButtonIndex];
+  int Note = ButtonNotes[ButtonIndex];
+  int Velocity = ButtonVelocitys[ButtonIndex];
+  #endif
+
 	if ( NewPressed )
 	{
 		Serial.print("Button ");
 		Serial.print(ButtonIndex);
-		Serial.println("Down...");
+		Serial.println(" Down...");
 	
-		Keyboard.write( ButtonKeys[ButtonIndex] );
+#if defined(MIDI_MODE)
+    noteOn(Channel,Note,Velocity);    
+#else
+    Keyboard.write( ButtonKeys[ButtonIndex] );
+#endif
 	}
+ else
+ {
+  Serial.print("Button ");
+    Serial.print(ButtonIndex);
+    Serial.println(" up...");
+ //  button released
+#if defined(MIDI_MODE)
+    noteOff(Channel,Note,Velocity);    
+#else
+#endif
+ }
 
 	WasPressed = NewPressed;	
 	return true;
